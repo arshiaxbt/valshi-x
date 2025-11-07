@@ -15,7 +15,7 @@ class Trade:
         """
         self.trade_id = data.get('trade_id', '')
         self.ticker = data.get('ticker', '')
-        self.side = data.get('side', '')  # 'yes' or 'no'
+        self.side = data.get('taker_side', '')  # 'yes' or 'no' - FIXED: use 'taker_side' not 'side'
         self.count = data.get('count', 0)  # Number of contracts
         self.yes_price = data.get('yes_price', 0)  # Price in cents
         self.no_price = data.get('no_price', 0)  # Price in cents
