@@ -92,6 +92,25 @@ class KalshiClient:
             print(f"Connection test failed: {str(e)}")
             return False
     
+    def get_auth_token(self) -> Optional[str]:
+        """Get authentication token for WebSocket connection.
+        
+        Returns:
+            Auth token string or None
+        """
+        try:
+            # The API key itself is used for WebSocket authentication
+            # Generate a signed message for WebSocket auth
+            timestamp = str(int(time.time() * 1000))
+            msg_string = timestamp + "GET" + "/trade-api/ws/v2"
+            signature = self._sign_message(msg_string)
+            
+            # Return auth token in format: key_id:timestamp:signature
+            return f"{self.api_key_id}:{timestamp}:{signature}"
+        except Exception as e:
+            print(f"Failed to generate auth token: {str(e)}")
+            return None
+    
     def get_exchange_status(self) -> Optional[Dict]:
         """Get exchange status."""
         return self._make_request('GET', '/trade-api/v2/exchange/status')

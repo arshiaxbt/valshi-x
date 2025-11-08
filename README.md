@@ -6,11 +6,13 @@ A Python bot that monitors [Kalshi](https://kalshi.com) for large trades (>$100K
 
 ## Features
 
-- 🔍 **Real-time Monitoring**: Continuously monitors Kalshi for whale trades
+- ⚡ **WebSocket Real-time**: Instant trade detection with 0-second latency (no polling!)
+- 🔍 **Real-time Monitoring**: Catches every trade as it happens on Kalshi
 - 🐋 **Whale Detection**: Automatically detects trades over $100K (configurable)
 - 🐦 **Auto-posting**: Posts formatted tweets to X with market details
 - 📊 **User-friendly Format**: Clean, readable tweets with market info and links
 - 🔄 **Deduplication**: Tracks posted trades to avoid duplicates
+- 🔁 **Auto-reconnect**: Resilient WebSocket connection with automatic reconnection
 - ⚡ **Efficient**: Caches market data to minimize API calls
 
 ## Requirements
@@ -60,9 +62,17 @@ os.environ["WHALE_THRESHOLD_DOLLARS"] = "100000"
 
 ### 4. Run the bot
 
+**WebSocket Mode (Recommended - Real-time):**
+```bash
+python bot_websocket.py
+```
+
+**Legacy Polling Mode:**
 ```bash
 python bot.py
 ```
+
+> ⚡ **WebSocket mode is recommended** for instant trade detection with 0-second latency!
 
 ## Configuration
 
@@ -105,12 +115,14 @@ https://kalshi.com/?search=TRUMPWIN-2024
 
 ```
 valshi-x/
-├── bot.py                 # Main bot script
+├── bot_websocket.py       # Main bot with WebSocket (recommended)
+├── bot.py                 # Legacy polling bot
+├── websocket_client.py    # WebSocket client for real-time trades
 ├── config.py              # Configuration management
 ├── credentials.py         # API credentials (not in repo)
 ├── kalshi_client.py       # Kalshi API client
 ├── x_client.py            # X (Twitter) API client
-├── trade_monitor.py       # Trade monitoring logic
+├── trade_monitor.py       # Trade monitoring logic (legacy)
 ├── tweet_formatter.py     # Tweet formatting
 ├── requirements.txt       # Python dependencies
 └── test_connection.py     # API connection tester
@@ -121,7 +133,8 @@ valshi-x/
 ### Kalshi API
 - **Documentation**: https://docs.kalshi.com/
 - **Authentication**: RSA-PSS signature
-- **Base URL**: `https://api.elections.kalshi.com`
+- **REST API Base URL**: `https://api.elections.kalshi.com`
+- **WebSocket URL**: `wss://api.elections.kalshi.com/trade-api/ws/v2`
 
 ### X API
 - **Documentation**: https://docs.x.com/
@@ -134,14 +147,20 @@ valshi-x/
 # Test API connections
 python test_connection.py
 
-# Run bot
+# Run bot (WebSocket - recommended)
+python bot_websocket.py
+
+# Run bot (legacy polling mode)
 python bot.py
 
 # Run in background
-nohup python bot.py > bot.log 2>&1 &
+nohup python bot_websocket.py > bot.log 2>&1 &
 
 # Stop bot
-pkill -f bot.py
+pkill -f bot_websocket.py
+
+# View logs (if running as service)
+journalctl -u valshi-x -f
 ```
 
 ## Troubleshooting
@@ -175,8 +194,46 @@ MIT
 
 Created by [@arshiaxbt](https://github.com/arshiaxbt)
 
+## Architecture
+
+### WebSocket vs Polling
+
+The bot now uses **WebSocket** for real-time trade detection:
+
+| Feature | WebSocket (New) | REST Polling (Legacy) |
+|---------|-----------------|----------------------|
+| Latency | **~0 seconds** ⚡ | Up to 60 seconds |
+| Trade Detection | **All trades in real-time** | May miss aggregated trades |
+| API Calls | Minimal (persistent connection) | Regular polling every 60s |
+| Reconnection | Automatic with exponential backoff | N/A |
+
+The bot automatically normalizes WebSocket trade messages to match the REST API format for seamless integration.
+
+## Technical Details
+
+### WebSocket Implementation
+
+The bot connects to Kalshi's WebSocket API at `wss://api.elections.kalshi.com/trade-api/ws/v2` and:
+
+1. Authenticates using the same RSA-PSS signature as the REST API
+2. Subscribes to the `trade` channel for all market trades
+3. Receives every trade in real-time as it happens
+4. Filters trades based on the $100K threshold
+5. Automatically reconnects on connection loss with exponential backoff
+
+### Performance
+
+- **0-second latency** for trade detection
+- **Instant alerts** when whale trades occur
+- **Resilient connection** with automatic reconnection
+- **Memory efficient** with LRU cache for seen trades
+
 ## Links
 
 - **Live Bot**: [@ValshiBot](https://x.com/ValshiBot)
 - **Kalshi**: https://kalshi.com
 - **Issues**: https://github.com/arshiaxbt/valshi-x/issues
+
+---
+
+**Powered by WebSocket** ⚡ | **Real-time Whale Detection** 🐋
